@@ -6,7 +6,7 @@ sources:
     schema: RAW
     tables:
       - name: nebula_it_products
-      - name: nebula_finance_param
+      - name: nebula_finance
       - name: nebula_pcode_to_project_mappings
       - name: nebula_pcode_split
       - name: nebula_subscriptions_type

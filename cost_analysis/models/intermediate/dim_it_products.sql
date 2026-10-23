@@ -36,7 +36,9 @@ deduplicated AS (
     FROM source_data
 )
 
-SELECT 
+SELECT
+    -- Generate a unique surrogate key MD5 hash using the business key
+    {{ dbt_utils.generate_surrogate_key(['Pcode']) }} AS it_product_sk,
     Pcode,
     Purpose,
     team,
