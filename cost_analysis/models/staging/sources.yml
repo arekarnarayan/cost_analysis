@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: raw
+    database: analysecost
+    schema: RAW
+    tables:
+      - name: nebula_it_products
+      - name: nebula_finance_param
+      - name: nebula_pcode_to_project_mappings
+      - name: nebula_pcode_split
+      - name: nebula_subscriptions_type
