@@ -456,3 +456,4 @@ DROP TABLE IF EXISTS analysecost.intermediate.finance_snapshot;
 --drop table intermediate.dim_finance_history;
 
 
+
