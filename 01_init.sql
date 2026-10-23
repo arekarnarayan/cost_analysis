@@ -423,11 +423,37 @@ SET RSA_PUBLIC_KEY='MII...B';
 
 DESCRIBE USER dbt;
 
+
+---after dbt run ---
+--drop schema staging;
+--drop schema intermediate;
+
+desc table raw.nebula_finance;
+
+----- get rowcount for it_product -- scd type 1 ---
 select 'nebula_it_products', count(1) from raw.nebula_it_products
 union all
 select 'stg_it_products' ,count(1) from staging.stg_it_products
 union all
 select 'dim_it_products' , count(1) from intermediate.dim_it_products;
 
---drop schema staging;
---drop schema intermediate;
+select * from raw.nebula_it_products;           -- raw append only on error - continue
+select * from staging.stg_it_products;          -- view
+select * from intermediate.dim_it_products;     -- scd type 1 with deduplicate with surrogate key
+
+
+--- get details for finance  -- scd type 2 ---
+select * from raw.nebula_finance;               -- raw append only on error - continue
+select * from staging.stg_nebula_finance;       --view
+select * from intermediate.dim_finance_history;  --scd type 2 with surrogate key
+
+SELECT * FROM analysecost.intermediate.finance_snapshot;
+
+DROP TABLE IF EXISTS intermediate.dim_finance_history;
+DROP TABLE IF EXISTS analysecost.intermediate.finance_snapshot;
+
+--drop view staging.stg_nebula_finance;
+--drop table intermediate.dim_finance_history;
+
+
+
