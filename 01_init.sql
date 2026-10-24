@@ -444,16 +444,48 @@ select * from intermediate.dim_it_products;     -- scd type 1 with deduplicate w
 
 --- get details for finance  -- scd type 2 ---
 select * from raw.nebula_finance;               -- raw append only on error - continue
-select * from staging.stg_nebula_finance;       --view
-select * from intermediate.dim_finance_history;  --scd type 2 with surrogate key
+select * from STAGING.STG_FINANCE_PARAMS;       --view
+select * from INTERMEDIATE.DIM_FINANCE_PARAM_TIMELINE;  --scd type 2 with surrogate key
 
-SELECT * FROM analysecost.intermediate.finance_snapshot;
+-- SELECT * FROM analysecost.intermediate.finance_snapshot;
 
-DROP TABLE IF EXISTS intermediate.dim_finance_history;
-DROP TABLE IF EXISTS analysecost.intermediate.finance_snapshot;
+-- drop view if exists staging.stg_it_products;
+-- drop table if exists intermediate.dim_it_products;
+
+-- drop table if exists ANALYSECOST.INTERMEDIATE.DIM_FINANCE_PARAM_TIMELINE;
+-- DROP TABLE IF EXISTS INTERMEDIATE.SNAP_FINANCE_PARAM_TIMELINE;
+-- DROP TABLE IF EXISTS INTERMEDIATE.INT_FINANCE_PARAM_TIMELINE;
+-- DROP TABLE IF EXISTS intermediate.dim_finance_history;
+-- DROP TABLE IF EXISTS intermediate.finance_snapshot;
+-- Drop View IF EXISTS staging.stg_nebula_finance;
+-- drop table if exists intermediate.dim_finance_history2;
+-- drop task ANALYSECOST.INTERMEDIATE.RUN_FINANCE_PIPELINE_TASK;
 
 --drop view staging.stg_nebula_finance;
 --drop table intermediate.dim_finance_history;
 
 
 
+SELECT
+    PARAMETER,
+    PARAMETER_VALUE,
+    BUSINESS_VALID_FROM,
+    BUSINESS_VALID_TO,
+    SOURCE_FILE_NAME,
+    SOURCE_INGESTED_AT,
+    IS_CURRENT
+FROM ANALYSECOST.INTERMEDIATE.INT_FINANCE_PARAM_TIMELINE
+WHERE PARAMETER = 'RICost'
+ORDER BY BUSINESS_VALID_FROM;
+
+SELECT
+    PARAMETER,
+    PARAMETER_VALUE,
+    BUSINESS_VALID_FROM,
+    BUSINESS_VALID_TO,
+    DBT_VALID_FROM,
+    DBT_VALID_TO,
+    SOURCE_FILE_NAME
+FROM ANALYSECOST.INTERMEDIATE.SNAP_FINANCE_PARAM_TIMELINE
+WHERE PARAMETER = 'RICost'
+ORDER BY BUSINESS_VALID_FROM, DBT_VALID_FROM;
