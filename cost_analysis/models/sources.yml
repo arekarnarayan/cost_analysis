@@ -7,6 +7,7 @@ sources:
     tables:
       - name: nebula_it_products
       - name: nebula_finance
+        description: Append-only finance parameter data loaded from Azure Blob Storage.
       - name: nebula_pcode_to_project_mappings
       - name: nebula_pcode_split
       - name: nebula_subscriptions_type
