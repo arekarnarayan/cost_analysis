@@ -1,83 +1,67 @@
+-- models/intermediate/dim_it_products.sql
+
 {{
     config(
         materialized='incremental',
-        schema='intermediate',
-        unique_key='Pcode',
+        schema='INTERMEDIATE',
+        unique_key='PCODE',
         incremental_strategy='merge'
     )
 }}
 
 WITH source_data AS (
-    SELECT 
-        Pcode, 
-        Purpose,
-        team,
-        Team_Code,
-        CURRENT_TIMESTAMP() AS updated_at
+
+    SELECT
+        PCODE,
+        PURPOSE,
+        TEAM,
+        TEAM_CODE,
+        FILE_NAME,
+        SOURCE_INGESTED_AT
+
     FROM {{ ref('stg_it_products') }}
-    
+
     {% if is_incremental() %}
-    -- Optional optimization: only pull records from staging that are newer than the max updated_at in the target table
-    WHERE updated_at > (SELECT MAX(updated_at) FROM {{ this }})
+    WHERE SOURCE_INGESTED_AT >= (
+        SELECT COALESCE(
+            DATEADD(
+                second,
+                -5,
+                MAX(SOURCE_INGESTED_AT)
+            ),
+            '1900-01-01'::TIMESTAMP_NTZ
+        )
+        FROM {{ this }}
+    )
     {% endif %}
+
 ),
 
 deduplicated AS (
-    SELECT 
-        Pcode,
-        Purpose,
-        team,
-        Team_Code,
-        updated_at,
-        ROW_NUMBER() OVER (
-            PARTITION BY Pcode 
-            ORDER BY updated_at DESC
-        ) as rn
+
+    SELECT *
     FROM source_data
+
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY PCODE
+        ORDER BY
+            SOURCE_INGESTED_AT DESC NULLS LAST,
+            FILE_NAME DESC,
+            PURPOSE DESC,
+            TEAM_CODE DESC
+    ) = 1
+
 )
 
 SELECT
-    -- Generate a unique surrogate key MD5 hash using the business key
-    {{ dbt_utils.generate_surrogate_key(['Pcode']) }} AS it_product_sk,
-    Pcode,
-    Purpose,
-    team,
-    Team_Code,
-    updated_at
+    {{ dbt_utils.generate_surrogate_key(['PCODE']) }}
+        AS IT_PRODUCT_SK,
+    PCODE,
+    PURPOSE,
+    TEAM,
+    TEAM_CODE,
+    FILE_NAME,
+    SOURCE_INGESTED_AT,
+    CURRENT_TIMESTAMP() AS DBT_PROCESSED_AT
+
 FROM deduplicated
-WHERE rn = 1
-
-
--- {{ config (materialized='table', schema='intermediate', unique_key='Pcode') }}
-
--- WITH source_data AS (
---     SELECT 
---         -- Select columns from your staging layer
---         Pcode, -- Make sure this is your unique business key
---         Purpose,
---         team,
---         Team_Code,
---         -- Add a metadata timestamp for when it was processed
---         CURRENT_TIMESTAMP() AS updated_at
---     FROM {{ ref('stg_it_products') }}
--- ),
-
--- -- Optional: Deduplicate source data in case staging has multiple records per product_id
--- deduplicated AS (
---     SELECT 
---         *,
---         ROW_NUMBER() OVER (
---             PARTITION BY Pcode 
---             ORDER BY updated_at DESC
---         ) as rn
---     FROM source_data
--- )
-
--- SELECT 
---     Pcode,
---     Purpose,
---     team,
---     team_code,
---     updated_at
--- FROM deduplicated
--- WHERE rn = 1

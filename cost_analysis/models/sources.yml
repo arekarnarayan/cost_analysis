@@ -4,10 +4,19 @@ sources:
   - name: raw
     database: analysecost
     schema: RAW
+
     tables:
       - name: nebula_it_products
+        description: >
+          Append-only IT product reference data
+          ingested from Azure Storage.
+
       - name: nebula_finance
-        description: Append-only finance parameter data loaded from Azure Blob Storage.
+        description: >
+          Append-only finance parameter deliveries,
+          including business effective dates and
+          source ingestion metadata.
+
       - name: nebula_pcode_to_project_mappings
       - name: nebula_pcode_split
       - name: nebula_subscriptions_type

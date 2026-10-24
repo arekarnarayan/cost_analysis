@@ -1,0 +1,43 @@
+
+version: 2
+
+models:
+  - name: dim_it_products
+    description: Current IT product dimension.
+
+    columns:
+      - name: IT_PRODUCT_SK
+        data_tests:
+          - not_null
+          - unique
+
+      - name: PCODE
+        data_tests:
+          - not_null
+          - unique
+
+  - name: int_finance_param_timeline
+    description: >
+      Business-effective finance parameter timeline.
+
+    columns:
+      - name: FINANCE_PARAM_KEY
+        data_tests:
+          - not_null
+          - unique
+
+      - name: PARAMETER
+        data_tests:
+          - not_null
+
+      - name: BUSINESS_VALID_FROM
+        data_tests:
+          - not_null
+
+      - name: BUSINESS_VALID_TO
+        data_tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: >
+                  BUSINESS_VALID_TO IS NULL
+                  OR BUSINESS_VALID_TO > BUSINESS_VALID_FROM
