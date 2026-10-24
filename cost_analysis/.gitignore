@@ -5,3 +5,20 @@ logs/
 dbt_internal_packages/
 .venv/
 
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# dbt generated files
+target/
+dbt_packages/
+logs/
+
+# Environment secrets
+.env
+.env.*
+!.env.example

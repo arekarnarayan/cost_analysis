@@ -1,0 +1,97 @@
+[0m15:32:15.403634 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10be76f90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dc47d90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dc47ed0>]}
+
+
+============================== 15:32:15.407194 | 658ef38f-3156-47c2-a1c1-f3b8e2926b01 ==============================
+[0m15:32:15.407194 [info ] [MainThread]: Running with dbt=1.8.10
+[0m15:32:15.407502 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'log_cache_events': 'False', 'write_json': 'True', 'partial_parse': 'True', 'cache_selected_only': 'False', 'profiles_dir': '/Users/narayanarekar/.dbt', 'debug': 'False', 'warn_error': 'None', 'log_path': 'logs', 'fail_fast': 'False', 'version_check': 'True', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'empty': 'None', 'log_format': 'default', 'introspect': 'True', 'static_parser': 'True', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'target_path': 'None', 'invocation_command': 'dbt init costanalysis', 'send_anonymous_usage_stats': 'True'}
+[0m15:32:15.440341 [warn ] [MainThread]: [[33mWARNING[0m]: This version of dbt is deprecated and no longer receives regular patches, including for known bugs. Please upgrade to a newer supported version of dbt for new projects: https://docs.getdbt.com/docs/dbt-versions?utm_source=dbt-cli
+[0m15:32:15.440617 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'deprecated_version_invocation', 'label': '658ef38f-3156-47c2-a1c1-f3b8e2926b01', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dc72060>]}
+[0m15:32:15.441962 [debug] [MainThread]: Starter project path: /Users/narayanarekar/Downloads/cost_analysis/.venv/lib/python3.13/site-packages/dbt/include/starter_project
+[0m15:32:15.446210 [info ] [MainThread]: 
+Your new dbt project "costanalysis" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m15:32:15.446400 [info ] [MainThread]: Setting up your profile.
+[0m15:35:42.233295 [info ] [MainThread]: Profile costanalysis written to /Users/narayanarekar/.dbt/profiles.yml using target's profile_template.yml and your supplied values. Run 'dbt debug' to validate the connection.
+[0m15:35:42.637488 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": true, "command_wall_clock_time": 207.27466, "process_in_blocks": "0", "process_kernel_time": 0.210796, "process_mem_max_rss": "127827968", "process_out_blocks": "0", "process_user_time": 0.775031}
+[0m15:35:42.640901 [debug] [MainThread]: Command `dbt init` succeeded at 15:35:42.640346 after 207.28 seconds
+[0m15:35:42.642420 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10ece88d0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10ece89e0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dd44550>]}
+[0m15:35:42.643217 [debug] [MainThread]: Flushing usage events
+[0m15:42:36.033139 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10724ef90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10901bd90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10901bed0>]}
+
+
+============================== 15:42:36.036451 | 79c4f277-fc66-4b06-913e-0364e9a92f39 ==============================
+[0m15:42:36.036451 [info ] [MainThread]: Running with dbt=1.8.10
+[0m15:42:36.036884 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'log_cache_events': 'False', 'write_json': 'True', 'partial_parse': 'True', 'cache_selected_only': 'False', 'warn_error': 'None', 'debug': 'False', 'version_check': 'True', 'log_path': 'logs', 'fail_fast': 'False', 'profiles_dir': '/Users/narayanarekar/.dbt', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'empty': 'None', 'log_format': 'default', 'invocation_command': 'dbt init costanalysis', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'introspect': 'True', 'target_path': 'None', 'static_parser': 'True', 'send_anonymous_usage_stats': 'True'}
+[0m15:42:36.045237 [warn ] [MainThread]: [[33mWARNING[0m]: This version of dbt is deprecated and no longer receives regular patches, including for known bugs. Please upgrade to a newer supported version of dbt for new projects: https://docs.getdbt.com/docs/dbt-versions?utm_source=dbt-cli
+[0m15:42:36.045461 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'deprecated_version_invocation', 'label': '79c4f277-fc66-4b06-913e-0364e9a92f39', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10904a060>]}
+[0m15:42:36.046093 [info ] [MainThread]: A project called costanalysis already exists here.
+[0m15:42:36.048155 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": true, "command_wall_clock_time": 0.049468584, "process_in_blocks": "0", "process_kernel_time": 0.115614, "process_mem_max_rss": "103596032", "process_out_blocks": "0", "process_user_time": 0.592248}
+[0m15:42:36.048426 [debug] [MainThread]: Command `dbt init` succeeded at 15:42:36.048368 after 0.05 seconds
+[0m15:42:36.048580 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10906f240>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10906f350>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1090d0350>]}
+[0m15:42:36.048719 [debug] [MainThread]: Flushing usage events
+[0m15:44:37.401112 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10b182f90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10cf4fd90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10cf4fed0>]}
+
+
+============================== 15:44:37.404426 | e7e98653-f85f-4b68-8ab8-d3082f156643 ==============================
+[0m15:44:37.404426 [info ] [MainThread]: Running with dbt=1.8.10
+[0m15:44:37.404723 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'log_cache_events': 'False', 'write_json': 'True', 'partial_parse': 'True', 'cache_selected_only': 'False', 'profiles_dir': '/Users/narayanarekar/.dbt', 'fail_fast': 'False', 'version_check': 'True', 'log_path': 'logs', 'debug': 'False', 'warn_error': 'None', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'empty': 'None', 'log_format': 'default', 'introspect': 'True', 'static_parser': 'True', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'target_path': 'None', 'invocation_command': 'dbt init cost_analysis', 'send_anonymous_usage_stats': 'True'}
+[0m15:44:37.413284 [warn ] [MainThread]: [[33mWARNING[0m]: This version of dbt is deprecated and no longer receives regular patches, including for known bugs. Please upgrade to a newer supported version of dbt for new projects: https://docs.getdbt.com/docs/dbt-versions?utm_source=dbt-cli
+[0m15:44:37.413525 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'deprecated_version_invocation', 'label': 'e7e98653-f85f-4b68-8ab8-d3082f156643', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10cf7e060>]}
+[0m15:44:37.414603 [debug] [MainThread]: Starter project path: /Users/narayanarekar/Downloads/cost_analysis/.venv/lib/python3.13/site-packages/dbt/include/starter_project
+[0m15:44:37.420841 [info ] [MainThread]: 
+Your new dbt project "cost_analysis" was created!
+
+For more information on how to configure the profiles.yml file,
+please consult the dbt documentation here:
+
+  https://docs.getdbt.com/docs/configure-your-profile
+
+One more thing:
+
+Need help? Don't hesitate to reach out to us via GitHub issues or on Slack:
+
+  https://community.getdbt.com/
+
+Happy modeling!
+
+[0m15:44:37.421026 [info ] [MainThread]: Setting up your profile.
+[0m15:47:31.820337 [info ] [MainThread]: Profile cost_analysis written to /Users/narayanarekar/.dbt/profiles.yml using target's profile_template.yml and your supplied values. Run 'dbt debug' to validate the connection.
+[0m15:47:31.831142 [debug] [MainThread]: Resource report: {"command_name": "init", "command_success": true, "command_wall_clock_time": 174.46826, "process_in_blocks": "0", "process_kernel_time": 0.210903, "process_mem_max_rss": "129892352", "process_out_blocks": "0", "process_user_time": 0.761633}
+[0m15:47:31.834677 [debug] [MainThread]: Command `dbt init` succeeded at 15:47:31.834366 after 174.47 seconds
+[0m15:47:31.838439 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dff49e0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10dff4af0>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10d004350>]}
+[0m15:47:31.839685 [debug] [MainThread]: Flushing usage events
+[0m15:57:50.645049 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'start', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1078b2f90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10967fd90>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10967fed0>]}
+
+
+============================== 15:57:50.648276 | 99fe32e6-0cbc-4f82-9129-1ca8123835ae ==============================
+[0m15:57:50.648276 [info ] [MainThread]: Running with dbt=1.8.10
+[0m15:57:50.648575 [debug] [MainThread]: running dbt with arguments {'printer_width': '80', 'indirect_selection': 'eager', 'log_cache_events': 'False', 'write_json': 'True', 'partial_parse': 'True', 'cache_selected_only': 'False', 'warn_error': 'None', 'debug': 'False', 'fail_fast': 'False', 'log_path': 'logs', 'version_check': 'True', 'profiles_dir': '/Users/narayanarekar/.dbt', 'use_colors': 'True', 'use_experimental_parser': 'False', 'no_print': 'None', 'quiet': 'False', 'empty': 'None', 'log_format': 'default', 'static_parser': 'True', 'introspect': 'True', 'invocation_command': 'dbt debug', 'target_path': 'None', 'warn_error_options': 'WarnErrorOptions(include=[], exclude=[])', 'send_anonymous_usage_stats': 'True'}
+[0m15:57:50.648761 [info ] [MainThread]: This version of dbt is deprecated and no longer receives regular patches, including for known bugs. We recommend upgrading to a newer supported version of dbt: https://docs.getdbt.com/docs/dbt-versions
+[0m15:57:50.648921 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'deprecated_version_invocation', 'label': '99fe32e6-0cbc-4f82-9129-1ca8123835ae', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x1096ad940>]}
+[0m15:57:50.658864 [info ] [MainThread]: dbt version: 1.8.10
+[0m15:57:50.659066 [info ] [MainThread]: python version: 3.13.9
+[0m15:57:50.659202 [info ] [MainThread]: python path: /Users/narayanarekar/Downloads/cost_analysis/.venv/bin/python3
+[0m15:57:50.659323 [info ] [MainThread]: os info: macOS-26.5.2-arm64-arm-64bit-Mach-O
+[0m15:57:50.919589 [info ] [MainThread]: Using profiles dir at /Users/narayanarekar/.dbt
+[0m15:57:50.919848 [info ] [MainThread]: Using profiles.yml file at /Users/narayanarekar/.dbt/profiles.yml
+[0m15:57:50.920007 [info ] [MainThread]: Using dbt_project.yml file at /Users/narayanarekar/Downloads/cost_analysis/dbt_project.yml
+[0m15:57:50.920192 [error] [MainThread]: Encountered an error:
+Internal Error
+  Profile should not be None if loading profile completed
+[0m15:57:50.922271 [debug] [MainThread]: Resource report: {"command_name": "debug", "command_success": false, "command_wall_clock_time": 0.31948334, "process_in_blocks": "0", "process_kernel_time": 0.167459, "process_mem_max_rss": "131219456", "process_out_blocks": "0", "process_user_time": 0.758075}
+[0m15:57:50.922687 [debug] [MainThread]: Command `dbt debug` failed at 15:57:50.922639 after 0.32 seconds
+[0m15:57:50.922853 [debug] [MainThread]: Sending event: {'category': 'dbt', 'action': 'invocation', 'label': 'end', 'context': [<snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10a726470>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10a726580>, <snowplow_tracker.self_describing_json.SelfDescribingJson object at 0x10a696250>]}
+[0m15:57:50.923010 [debug] [MainThread]: Flushing usage events
