@@ -199,6 +199,15 @@ ON_ERROR = CONTINUE;
 
 select count(1) from RAW.pcf_data;
 
+select * from RAW.pcf_data;
+
+SELECT 
+    -- list only the columns you actually need
+    instanceid,
+    -- other columns...
+FROM RAW.pcf_data
+WHERE instanceid NOT LIKE '%disk%';
+
 desc TABLE RAW.pcf_data;
 
 
