@@ -28,8 +28,11 @@ TRUNCATE TABLE IF EXISTS AUDIT.RECONCILE_RUN;
 
 select * from AUDIT.LOAD_SOURCE_CONFIG;
 
-SHOW TABLES IN SCHEMA ANALYSECOST.AUDIT;
+desc table AUDIT.LOAD_SOURCE_CONFIG;
 
+--SHOW TABLES IN SCHEMA ANALYSECOST.AUDIT;
+
+ALTER STAGE RAW.DEVCOSTDATA REFRESH;    -- refresh the Directory Table after uploading the file to Azure as auto refresh is 
 
 
 USE ROLE LOADER_ROLE;
@@ -40,7 +43,10 @@ USE WAREHOUSE COMPUTE_WH;
 -- ALTER PIPE RAW.PCF_PIPE REFRESH PREFIX = 'pcf/';
 
 -- Step 2: Trigger manual load for all enabled config sources
-CALL AUDIT.SP_LOAD_RAW_MANUAL('SUBSCRIPTIONS');
+CALL AUDIT.SP_LOAD_RAW_MANUAL('ALL');
+
+
+PCODE_MAPPING=NO_NEW_FILES PCODE_SPLIT=SUCCESS SUBSCRIPTIONS=NO_NEW_FILES IT_PRODUCT=NO_NEW_FILES FINANCE_PARAM=NO_NEW_FILES
 
 SELECT run_id, source_name, target_table, status, files_loaded, rows_loaded, error_message
 FROM AUDIT.LOAD_RUN
@@ -73,85 +79,104 @@ WHERE RELATIVE_PATH LIKE 'config/subscription/%';
 --CALL AUDIT.SP_RECONCILE();
 
 -- 4. Run full historical audit across ALL sources (all-time)
-CALL AUDIT.SP_RECONCILE('SUBSCRIPTIONS', 0);
+CALL AUDIT.SP_RECONCILE('PCODE_MAPPING', 0);
 
 
 
+----anonymous block script (EXECUTE IMMEDIATE $$ ... $$) that iterates through each enabled dataset in AUDIT.LOAD_SOURCE_CONFIG
 USE ROLE LOADER_ROLE;
 USE DATABASE ANALYSECOST;
+USE SCHEMA AUDIT;
+USE WAREHOUSE COMPUTE_WH;
 
-select * from AUDIT.LOAD_SOURCE_CONFIG;
+EXECUTE IMMEDIATE $$
+DECLARE
+    res      RESULTSET;
+    c_config CURSOR FOR 
+        SELECT source_name, target_table, load_mode
+        FROM AUDIT.LOAD_SOURCE_CONFIG
+        WHERE enabled = TRUE
+        and LOAD_MODE = 'MANUAL'
+        ORDER BY load_mode DESC, source_name ASC;
 
--- 1. Check Batch Ingestion Runs
+    v_src    VARCHAR;
+    v_tbl    VARCHAR;
+    v_mode   VARCHAR;
+    v_out    VARCHAR;
+    v_status VARCHAR;
+BEGIN
+    -- 1. Create a session temporary table to store the results of each run
+    CREATE OR REPLACE TEMPORARY TABLE TEMP_RECONCILE_RESULTS (
+        source_name      VARCHAR,
+        target_table     VARCHAR,
+        load_mode        VARCHAR,
+        overall_status   VARCHAR,
+        reconcile_detail VARCHAR,
+        executed_at      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+    );
+
+    -- 2. Loop through every enabled source from the config table
+    FOR r IN c_config DO
+        v_src  := r.source_name;
+        v_tbl  := r.target_table;
+        v_mode := r.load_mode;
+        v_out  := '';
+
+        BEGIN
+            -- Execute SP_RECONCILE for this specific source (0 = all-time historical lookback)
+            CALL AUDIT.SP_RECONCILE(:v_src, 0) INTO :v_out;
+            
+            -- Extract status prefix (PASS, FAIL, PASS_WITH_WARNINGS)
+            v_status := SPLIT_PART(:v_out, ' ', 1);
+
+        EXCEPTION
+            WHEN OTHER THEN
+                v_status := 'ERROR';
+                v_out    := 'SQL Exception: ' || SQLERRM;
+        END;
+
+        -- 3. Record the result
+        INSERT INTO TEMP_RECONCILE_RESULTS (
+            source_name, target_table, load_mode, overall_status, reconcile_detail
+        )
+        VALUES (
+            :v_src, :v_tbl, :v_mode, :v_status, :v_out
+        );
+    END FOR;
+
+    -- 4. Return the entire output as an interactive grid in Snowsight
+    res := (
+        SELECT 
+            source_name,
+            target_table,
+            load_mode,
+            overall_status,
+            reconcile_detail,
+            executed_at
+        FROM TEMP_RECONCILE_RESULTS
+        ORDER BY 
+            CASE overall_status WHEN 'FAIL' THEN 1 WHEN 'PASS_WITH_WARNINGS' THEN 2 ELSE 3 END,
+            source_name
+    );
+
+    RETURN TABLE(res);
+END;
+$$;
+
+
+--If any source displays FAIL or PASS_WITH_WARNINGS, run this query to view the discrepancies found by the loop:
 SELECT 
-    run_id, 
-    source_name, 
-    target_table, 
-    status, 
-    files_loaded, 
-    files_failed, 
-    rows_loaded, 
-    started_at, 
-    finished_at,
-    error_message
-FROM AUDIT.LOAD_RUN 
-ORDER BY started_at DESC;
-
--- 2. Inspect Ingested Files in Audit Ledger
-SELECT 
-    target_table, 
-    file_name, 
-    load_path, 
-    status, 
-    row_loaded, 
-    row_parsed, 
-    error_count, 
-    attempted_at, 
-    synced_at
-FROM AUDIT.FILE_LEDGER 
-ORDER BY attempted_at DESC;
-
--- 3. Check Overall Reconciliation Status
--- Note: Uses EXECUTED_AT as defined in the AUDIT.RECONCILE_RUN DDL
-SELECT 
-    reconcile_id, 
-    status, 
-    azure_files, 
-    blocking_count, 
-    warning_count, 
-    exception_count, 
-    executed_at
-FROM AUDIT.RECONCILE_RUN 
-ORDER BY executed_at DESC 
-LIMIT 5;
-
--- 4. Drill Down into Exceptions from the Latest Reconciliation
-SELECT 
-    exception_type, 
-    source_name, 
-    file_name, 
-    detail, 
-    recommended_action, 
-    detected_at
-FROM AUDIT.RECONCILE_EXCEPTION
-WHERE reconcile_id = (
-    SELECT reconcile_id 
-    FROM AUDIT.RECONCILE_RUN 
-    ORDER BY executed_at DESC 
-    LIMIT 1
+    e.detected_at,
+    e.source_name,
+    e.exception_type,
+    e.file_name,
+    e.detail,
+    e.recommended_action
+FROM AUDIT.RECONCILE_EXCEPTION e
+WHERE e.reconcile_id IN (
+    SELECT DISTINCT SPLIT_PART(SPLIT_PART(reconcile_detail, 'reconcile_id=', 2), ' ', 1)
+    FROM TEMP_RECONCILE_RESULTS
+    WHERE overall_status IN ('FAIL', 'PASS_WITH_WARNINGS')
 )
-ORDER BY exception_type;
+ORDER BY e.detected_at DESC;
 
--- 5. Inspect Serverless Task Execution History
-SELECT 
-    NAME, 
-    STATE, 
-    SCHEDULED_TIME, 
-    QUERY_START_TIME, 
-    COMPLETED_TIME, 
-    ERROR_CODE, 
-    ERROR_MESSAGE
-FROM TABLE(ANALYSECOST.INFORMATION_SCHEMA.TASK_HISTORY(
-    SCHEDULED_TIME_RANGE_START => DATEADD('day', -1, CURRENT_TIMESTAMP())
-))
-ORDER BY SCHEDULED_TIME DESC;
