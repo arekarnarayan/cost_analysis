@@ -72,6 +72,10 @@ desc integration project3_adls_integration;
 -- CRITICAL :: approve URL and then grant blob_reader role to user mentioned in the AZURE_MULTI_TENANT_APP_NAME
 
 
+
+-------------------------------
+
+
 -- 2. Create the stage using the integration
 CREATE OR replace STAGE RAW.devcostdata
   URL = 'azure://stazurecostanalysis1.blob.core.windows.net/devcostdata/'
@@ -498,3 +502,107 @@ SELECT
 FROM ANALYSECOST.INTERMEDIATE.SNAP_FINANCE_PARAM_TIMELINE
 WHERE PARAMETER = 'RICost'
 ORDER BY BUSINESS_VALID_FROM, DBT_VALID_FROM;
+
+
+-------------------------snopipe enablement -------------------
+
+-------notification ------------
+USE ROLE ACCOUNTADMIN;
+
+-- Dedicated Notification Integration for Snowpipe
+CREATE NOTIFICATION INTEGRATION IF NOT EXISTS devcostdata_snowpipe_notification_int
+  ENABLED = TRUE
+  TYPE = QUEUE
+  NOTIFICATION_PROVIDER = AZURE_STORAGE_QUEUE
+  AZURE_STORAGE_QUEUE_PRIMARY_URI = 'https://stazurecostanalysis1.queue.core.windows.net/devcostdata-snowpipe-queue'
+  AZURE_TENANT_ID = 'e5ce28dd-0763-48b9-8900-5863b66c2266';
+
+DESC NOTIFICATION INTEGRATION devcostdata_snowpipe_notification_int;
+-- Authorize the Snowflake Enterprise App in Azure portal with "Storage Queue Data Contributor"
+
+
+GRANT USAGE ON INTEGRATION devcostdata_snowpipe_notification_int TO ROLE LOADER_ROLE;
+
+
+
+USE ROLE LOADER_ROLE;
+USE DATABASE ANALYSECOST;
+
+-- 1. Add PIPE_NAME column if not already present
+ALTER TABLE AUDIT.LOAD_SOURCE_CONFIG ADD COLUMN IF NOT EXISTS pipe_name VARCHAR;
+
+MERGE INTO AUDIT.LOAD_SOURCE_CONFIG tgt
+USING (
+    SELECT 'PCF' AS source_name, 'pcf/' AS source_prefix, '.*[.]parquet' AS file_pattern, 
+           'RAW.PARQUET' AS file_format, 'RAW.PCF_RAW' AS target_table, 'record_payload' AS target_columns, 
+           '$1' AS select_list, 'PIPE' AS load_mode, 'RAW.PCF_PIPE' AS pipe_name, TRUE AS enabled
+    UNION ALL
+    SELECT 'IT_PRODUCT', 'config/it_product/', '.*[.]csv', 'RAW.CSV', 'RAW.NEBULA_IT_PRODUCTS', 
+           'Purpose, Pcode, Team, Team_Code', '$1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR', 
+           'MANUAL', NULL, TRUE
+    UNION ALL
+    SELECT 'FINANCE_PARAM', 'config/finance_param/', '.*[.]csv', 'RAW.CSV', 'RAW.NEBULA_FINANCE', 
+           'Parameter, Value, Load_Date', '$1::VARCHAR, $2::VARCHAR, $3::VARCHAR', 
+           'MANUAL', NULL, TRUE
+    UNION ALL
+    SELECT 'PCODE_MAPPING', 'config/pcode_mapping/', '.*[.]csv', 'RAW.CSV', 'RAW.NEBULA_PCODE_TO_PROJECT_MAPPINGS', 
+           'Pcode, Allocation, Azure_Budget_Group, Project_Code, __START_AT', 
+           '$1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR', 
+           'MANUAL', NULL, TRUE
+    UNION ALL
+    SELECT 'PCODE_SPLIT', 'config/pcode_split/', '.*[.]csv', 'RAW.CSV', 'RAW.NEBULA_PCODE_SPLIT', 
+           'Azure_Budget_Group, Pcode, Project_Code, Allocation, share, __START_AT', 
+           '$1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR, $6::VARCHAR', 
+           'MANUAL', NULL, TRUE
+    UNION ALL
+    SELECT 'SUBSCRIPTIONS', 'config/subscriptions/', '.*[.]csv', 'RAW.CSV', 'RAW.NEBULA_SUBSCRIPTIONS_TYPE', 
+           'Environment, Description_Purpose, Subscription_name, __START_AT, subscriptions', 
+           '$1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR, $5::VARCHAR', 
+           'MANUAL', NULL, TRUE
+) src
+ON tgt.source_name = src.source_name
+WHEN MATCHED THEN UPDATE SET
+    source_prefix = src.source_prefix,
+    file_pattern  = src.file_pattern,
+    file_format   = src.file_format,
+    target_table  = src.target_table,
+    target_columns= src.target_columns,
+    select_list   = src.select_list,
+    load_mode     = src.load_mode,
+    pipe_name     = src.pipe_name,
+    enabled       = src.enabled
+WHEN NOT MATCHED THEN INSERT VALUES (
+    src.source_name, src.source_prefix, src.file_pattern, src.file_format,
+    src.target_table, src.target_columns, src.select_list, src.load_mode, 
+    src.enabled, src.pipe_name
+);
+
+
+USE ROLE LOADER_ROLE;
+USE DATABASE ANALYSECOST;
+
+CREATE OR REPLACE PIPE RAW.PCF_PIPE
+  AUTO_INGEST = TRUE
+  INTEGRATION = 'DEVCOSTDATA_SNOWPIPE_NOTIFICATION_INT'  -- Must be UPPERCASE
+AS
+COPY INTO RAW.PCF_RAW (
+    record_payload,
+    source_system,
+    load_id,
+    source_file_name,
+    source_file_row_number,
+    loaded_at
+)
+FROM (
+    SELECT 
+        $1,                                                 -- record_payload (VARIANT)
+        'nebula-legacy',                                    -- source_system
+        'PIPE_' || METADATA$START_SCAN_TIME::VARCHAR,       -- deterministic load_id
+        METADATA$FILENAME,                                  -- source_file_name
+        METADATA$FILE_ROW_NUMBER,                           -- source_file_row_number
+        CURRENT_TIMESTAMP()                                 -- loaded_at
+    FROM @RAW.DEVCOSTDATA/pcf/
+)
+FILE_FORMAT = (FORMAT_NAME = 'RAW.PARQUET')
+PATTERN = '.*[.]parquet'
+ON_ERROR = 'SKIP_FILE';

@@ -97,11 +97,8 @@ GRANT USAGE ON FUTURE FILE FORMATS IN SCHEMA RAW TO ROLE LOADER_ROLE;
 
 ---------------------------------------------------------------------------------------------
 
--- Stage and file formats (LOADER_ROLE uses these)
-USE ROLE LOADER_ROLE;
+USE ROLE ACCOUNTADMIN;
 USE DATABASE ANALYSECOST;
-USE WAREHOUSE COMPUTE_WH;
-
 
 
 -- 2. Create the stage using the integration
@@ -109,13 +106,27 @@ CREATE OR replace STAGE RAW.devcostdata
   URL = 'azure://stazurecostanalysis1.blob.core.windows.net/devcostdata/'
   STORAGE_INTEGRATION = project3_adls_integration;
 
-drop stage RAW.devcostdata;
 
 GRANT USAGE ON STAGE RAW.DEVCOSTDATA TO ROLE LOADER_ROLE;
 GRANT READ ON STAGE RAW.DEVCOSTDATA TO ROLE LOADER_ROLE;
 
 -- Show all stages
 SHOW STAGES LIKE 'devcostdata';
+
+
+-- 1. Enable Directory Table without auto-refresh (no notification integration required)
+ALTER STAGE RAW.DEVCOSTDATA SET 
+    DIRECTORY = (
+        ENABLE = TRUE, 
+        AUTO_REFRESH = FALSE
+    );
+
+-- 2. Manually refresh the directory table
+ALTER STAGE RAW.DEVCOSTDATA REFRESH;
+
+-- 3. Verify directory contents
+SELECT * FROM DIRECTORY(@RAW.DEVCOSTDATA) LIMIT 10;
+
 
 -- List with pattern (e.g. only Parquet files)
 LIST @devcostdata PATTERN = '.*\.parquet';
@@ -220,6 +231,32 @@ INSERT INTO AUDIT.LOAD_SOURCE_CONFIG VALUES
   'Parameter, Value, Load_Date', '$1::VARCHAR, $2::VARCHAR, $3::VARCHAR', 'MANUAL', TRUE);
 
 
+
+-- -- Seed Ingestion Configurations
+-- MERGE INTO AUDIT.LOAD_SOURCE_CONFIG tgt
+-- USING (
+--     SELECT 'PCF' AS source_name, 'pcf/' AS source_prefix, '.*[.]parquet' AS file_pattern, 'RAW.PARQUET' AS file_format, 'RAW.PCF_RAW' AS target_table, 'record_payload' AS target_columns, '$1' AS select_list, 'MANUAL' AS load_mode, TRUE AS enabled
+--     UNION ALL
+--     SELECT 'IT_PRODUCT', 'config/it_product/', '.*[.]csv', 'RAW.CSV', 'RAW.NEBULA_IT_PRODUCTS', 'Purpose, Pcode, Team, Team_Code', '$1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR', 'MANUAL', TRUE
+--     UNION ALL
+--     SELECT 'FINANCE_PARAM', 'config/finance_param/', '.*[.]csv', 'RAW.CSV', 'RAW.NEBULA_FINANCE', 'Parameter, Value, Load_Date', '$1::VARCHAR, $2::VARCHAR, $3::VARCHAR', 'MANUAL', TRUE
+-- ) src
+-- ON tgt.source_name = src.source_name
+-- WHEN MATCHED THEN UPDATE SET
+--     source_prefix = src.source_prefix,
+--     file_pattern = src.file_pattern,
+--     file_format = src.file_format,
+--     target_table = src.target_table,
+--     target_columns = src.target_columns,
+--     select_list = src.select_list,
+--     load_mode = src.load_mode,
+--     enabled = src.enabled
+-- WHEN NOT MATCHED THEN INSERT VALUES (
+--     src.source_name, src.source_prefix, src.file_pattern, src.file_format,
+--     src.target_table, src.target_columns, src.select_list, src.load_mode, src.enabled
+-- );
+
+
 select * from AUDIT.LOAD_SOURCE_CONFIG;
 
 ---audit log tables
@@ -263,3 +300,151 @@ CREATE TABLE IF NOT EXISTS AUDIT.FILE_LEDGER (
 );
 
 
+-- RAW row counts per file, used by the rowcount check
+CREATE OR REPLACE VIEW AUDIT.V_RAW_FILE_ROWS AS
+SELECT 'RAW.PCF_RAW' AS target_table, source_file_name AS file_name, COUNT(*) AS raw_rows FROM RAW.PCF_RAW GROUP BY source_file_name
+UNION ALL SELECT 'RAW.NEBULA_IT_PRODUCTS', source_file_name, COUNT(*) FROM RAW.NEBULA_IT_PRODUCTS GROUP BY source_file_name
+UNION ALL SELECT 'RAW.NEBULA_FINANCE', source_file_name, COUNT(*) FROM RAW.NEBULA_FINANCE GROUP BY source_file_name
+UNION ALL SELECT 'RAW.NEBULA_PCODE_TO_PROJECT_MAPPINGS', source_file_name, COUNT(*) FROM RAW.NEBULA_PCODE_TO_PROJECT_MAPPINGS GROUP BY source_file_name
+UNION ALL SELECT 'RAW.NEBULA_PCODE_SPLIT', source_file_name, COUNT(*) FROM RAW.NEBULA_PCODE_SPLIT GROUP BY source_file_name
+UNION ALL SELECT 'RAW.NEBULA_SUBSCRIPTIONS_TYPE', source_file_name, COUNT(*) FROM RAW.NEBULA_SUBSCRIPTIONS_TYPE GROUP BY source_file_name;
+
+
+
+select * from AUDIT.V_RAW_FILE_ROWS;
+
+select * from AUDIT.V_COPY_HISTORY_RAW;
+
+-- One view over COPY_HISTORY for all RAW tables. Both pipe and manual loads appear here.
+USE ROLE LOADER_ROLE;
+USE DATABASE ANALYSECOST;
+USE SCHEMA AUDIT;
+
+CREATE OR REPLACE VIEW AUDIT.V_COPY_HISTORY_RAW AS
+SELECT 
+    'RAW.PCF_RAW' AS target_table, 
+    FILE_NAME, PIPE_NAME, LAST_LOAD_TIME, STATUS, FILE_SIZE, ROW_PARSED, ROW_COUNT,
+    ERROR_COUNT, FIRST_ERROR_MESSAGE, FIRST_ERROR_LINE_NUMBER, FIRST_ERROR_COLUMN_NAME, 
+    PIPE_RECEIVED_TIME, LAST_LOAD_TIME AS FIRST_COMMIT_TIME
+FROM TABLE(ANALYSECOST.INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'RAW.PCF_RAW', 
+    START_TIME => DATEADD('day', -14, CURRENT_TIMESTAMP())
+))
+
+UNION ALL
+
+SELECT 
+    'RAW.NEBULA_IT_PRODUCTS', 
+    FILE_NAME, PIPE_NAME, LAST_LOAD_TIME, STATUS, FILE_SIZE, ROW_PARSED, ROW_COUNT,
+    ERROR_COUNT, FIRST_ERROR_MESSAGE, FIRST_ERROR_LINE_NUMBER, FIRST_ERROR_COLUMN_NAME, 
+    PIPE_RECEIVED_TIME, LAST_LOAD_TIME AS FIRST_COMMIT_TIME
+FROM TABLE(ANALYSECOST.INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'RAW.NEBULA_IT_PRODUCTS', 
+    START_TIME => DATEADD('day', -14, CURRENT_TIMESTAMP())
+))
+
+UNION ALL
+
+SELECT 
+    'RAW.NEBULA_FINANCE', 
+    FILE_NAME, PIPE_NAME, LAST_LOAD_TIME, STATUS, FILE_SIZE, ROW_PARSED, ROW_COUNT,
+    ERROR_COUNT, FIRST_ERROR_MESSAGE, FIRST_ERROR_LINE_NUMBER, FIRST_ERROR_COLUMN_NAME, 
+    PIPE_RECEIVED_TIME, LAST_LOAD_TIME AS FIRST_COMMIT_TIME
+FROM TABLE(ANALYSECOST.INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'RAW.NEBULA_FINANCE', 
+    START_TIME => DATEADD('day', -14, CURRENT_TIMESTAMP())
+))
+
+UNION ALL
+
+SELECT 
+    'RAW.NEBULA_PCODE_TO_PROJECT_MAPPINGS', 
+    FILE_NAME, PIPE_NAME, LAST_LOAD_TIME, STATUS, FILE_SIZE, ROW_PARSED, ROW_COUNT,
+    ERROR_COUNT, FIRST_ERROR_MESSAGE, FIRST_ERROR_LINE_NUMBER, FIRST_ERROR_COLUMN_NAME, 
+    PIPE_RECEIVED_TIME, LAST_LOAD_TIME AS FIRST_COMMIT_TIME
+FROM TABLE(ANALYSECOST.INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'RAW.NEBULA_PCODE_TO_PROJECT_MAPPINGS', 
+    START_TIME => DATEADD('day', -14, CURRENT_TIMESTAMP())
+))
+
+UNION ALL
+
+SELECT 
+    'RAW.NEBULA_PCODE_SPLIT', 
+    FILE_NAME, PIPE_NAME, LAST_LOAD_TIME, STATUS, FILE_SIZE, ROW_PARSED, ROW_COUNT,
+    ERROR_COUNT, FIRST_ERROR_MESSAGE, FIRST_ERROR_LINE_NUMBER, FIRST_ERROR_COLUMN_NAME, 
+    PIPE_RECEIVED_TIME, LAST_LOAD_TIME AS FIRST_COMMIT_TIME
+FROM TABLE(ANALYSECOST.INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'RAW.NEBULA_PCODE_SPLIT', 
+    START_TIME => DATEADD('day', -14, CURRENT_TIMESTAMP())
+))
+
+UNION ALL
+
+SELECT 
+    'RAW.NEBULA_SUBSCRIPTIONS_TYPE', 
+    FILE_NAME, PIPE_NAME, LAST_LOAD_TIME, STATUS, FILE_SIZE, ROW_PARSED, ROW_COUNT,
+    ERROR_COUNT, FIRST_ERROR_MESSAGE, FIRST_ERROR_LINE_NUMBER, FIRST_ERROR_COLUMN_NAME, 
+    PIPE_RECEIVED_TIME, LAST_LOAD_TIME AS FIRST_COMMIT_TIME
+FROM TABLE(ANALYSECOST.INFORMATION_SCHEMA.COPY_HISTORY(
+    TABLE_NAME => 'RAW.NEBULA_SUBSCRIPTIONS_TYPE', 
+    START_TIME => DATEADD('day', -14, CURRENT_TIMESTAMP())
+));
+
+--------------------reconciliation -------------------
+
+USE ROLE ACCOUNTADMIN;
+USE DATABASE ANALYSECOST;
+
+-- 1. Temporary inventory staging for reconciliation runs
+CREATE TABLE IF NOT EXISTS AUDIT.STAGE_INVENTORY (
+    reconcile_id        VARCHAR NOT NULL,
+    file_key            VARCHAR NOT NULL,
+    size_bytes          NUMBER,
+    last_modified_raw   VARCHAR,
+    source_name         VARCHAR,
+    target_table        VARCHAR,
+    scanned_at          TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- 2. Audit exceptions ledger
+CREATE TABLE IF NOT EXISTS AUDIT.RECONCILE_EXCEPTION (
+    exception_id        NUMBER AUTOINCREMENT,
+    reconcile_id        VARCHAR NOT NULL,
+    exception_type      VARCHAR NOT NULL, -- LEDGER_STALE, PIPE_NOT_RUNNING, MISSING_LOAD, etc.
+    source_name         VARCHAR,
+    file_name           VARCHAR,
+    detail              VARCHAR,
+    recommended_action  VARCHAR,
+    detected_at         TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- 3. High-level reconciliation run ledger
+CREATE TABLE IF NOT EXISTS AUDIT.RECONCILE_RUN (
+    reconcile_id        VARCHAR NOT NULL PRIMARY KEY,
+    azure_files         NUMBER,
+    exception_count     NUMBER,
+    blocking_count      NUMBER,
+    warning_count       NUMBER,
+    status              VARCHAR, -- PASS, PASS_WITH_WARNINGS, FAIL
+    executed_at         TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+
+select * from AUDIT.V_RAW_FILE_ROWS;  V_COPY_HISTORY_RAW
+
+-- 5. Notification Integration (Optional - needed if calling SYSTEM$SEND_EMAIL)
+-- CREATE NOTIFICATION INTEGRATION IF NOT EXISTS PCF_EMAIL_INT
+--     TYPE = EMAIL
+--     ENABLED = TRUE
+--     ALLOWED_RECIPIENTS = ('ops-team@example.com');
+
+USE ROLE ACCOUNTADMIN;
+USE DATABASE ANALYSECOST;
+
+-- Grant select on current and future views in AUDIT schema to LOADER_ROLE
+GRANT SELECT ON ALL VIEWS IN SCHEMA ANALYSECOST.AUDIT TO ROLE LOADER_ROLE;
+GRANT SELECT ON FUTURE VIEWS IN SCHEMA ANALYSECOST.AUDIT TO ROLE LOADER_ROLE;
+
+-- Or transfer ownership of the view to LOADER_ROLE
+GRANT OWNERSHIP ON VIEW ANALYSECOST.AUDIT.V_COPY_HISTORY_RAW TO ROLE LOADER_ROLE COPY CURRENT GRANTS;
